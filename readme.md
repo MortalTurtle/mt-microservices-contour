@@ -17,29 +17,25 @@ A demonstration project showcasing a **fully enclosed inner microservices contou
 ```mermaid
 graph TB
     subgraph "External Network / Internet"
-        Client[External Client]
-        external_dns[External DNS]
+        client[External Client]
+        external_dns[external_dns]
     end
 
     subgraph "Enclosed Microservices Network"
-        internal_dns[Internal DNS Server]
+        internal_dns[internal_dns]
 
         subgraph "Service Layer"
-            gate[Gate Service<br/>API Gateway]
-            auth[Auth Service<br/>Client Authentication]
-            TVM[TVM Service<br/>Service Authentication]
-        end
-
-        subgraph "Example Services"
-            some_service[Service]
+            gate[gate<br/>Public API]
+            auth[auth<br/>Client Authentication]
+            TVM[tvm<br/>Service Authentication]
         end
     end
 
-    Client -->|1. DNS Query| external_dns
-    ExtDNS -->|2. Resolves to Gate| gate
-    Client -->|3. API Request| gate
-    Gate -->|4. Validate Client Token| auth
-    Auth -->|5. Internal Request with Service Ticket| TVM
+    client -->|1. DNS Query| external_dns
+    external_dns -->|2. Resolves to gate| gate
+    client -->|3. API Request| gate
+    gate -->|4. Validate Client Token| auth
+    auth -->|5. Internal Request with Service Ticket| TVM
     TVM -->|6. Service Auth| auth
     internal_dns -.->|Internal Resolution| gate
     internal_dns -.->|Internal Resolution| auth
