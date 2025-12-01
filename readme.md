@@ -31,12 +31,13 @@ graph TB
         end
     end
 
-    client -->|1. DNS Query| external_dns
-    external_dns -->|2. Resolves to gate| gate
-    client -->|3. API Request| gate
-    gate -->|4. Validate Client Token| auth
-    auth -->|5. Internal Request with Service Ticket| TVM
-    TVM -->|6. Service Auth| auth
+    client -->|1. Public API Request| gate
+    gate -->|2. Client authentication request| auth
+    auth -->|3. Token validation| TVM
+    TVM -->|4. Gate ticket from token| auth
+    auth -->|5. Client authentication answer| gate
+    auth -->|6. Public API Answer| gate
     internal_dns -.->|Internal Resolution| gate
     internal_dns -.->|Internal Resolution| auth
     internal_dns -.->|Internal Resolution| TVM
+    external_dns -.->|External Resolution| gate
