@@ -33,10 +33,10 @@ graph TB
 
     client -->|1. Public API Request| gate
     gate -->|2. Client authentication request| auth
-    auth -->|3. Token validation| TVM
-    TVM -->|4. Gate ticket from token| auth
+    auth -->|3. Ticket request| TVM
+    TVM -->|4. Gate ticket| auth
     auth -->|5. Client authentication answer| gate
-    auth -->|6. Public API Answer| gate
+    gate -->|6. Public API Answer| client
     internal_dns -.->|Internal Resolution| gate
     internal_dns -.->|Internal Resolution| auth
     internal_dns -.->|Internal Resolution| TVM
