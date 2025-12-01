@@ -1,0 +1,5 @@
+zone "mt.ru" IN {
+    type master;
+    file "/var/cache/bind/mt.ru";
+    allow-query { any; };
+};
