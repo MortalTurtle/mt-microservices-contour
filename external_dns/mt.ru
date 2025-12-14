@@ -7,5 +7,5 @@ mt.ru.        IN      SOA     ns_ext.mt.ru. root.localhost. (
                           86400 )       ; Negative Cache TTL
 
 mt.ru.        IN      NS      ns_ext.mt.ru.
-ns_ext.mt.ru.   A       172.16.0.1
-gate    IN      A       172.16.0.3
+ns_ext.mt.ru.   A       172.20.0.1
+gate    IN      A       172.20.0.3

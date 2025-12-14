@@ -1,3 +1,12 @@
 options {
     directory "/var/cache/bind";
+    recursion yes;
+    allow-recursion { any; };
+    forwarders {
+        8.8.8.8;
+        8.8.4.4;
+        1.1.1.1;
+    };
+    listen-on { any; };
+    allow-query { any; };
 };

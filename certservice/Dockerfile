@@ -1,15 +1,14 @@
 FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o gate .
+RUN CGO_ENABLED=0 GOOS=linux go build -o certservice .
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates curl
 WORKDIR /app
-COPY --from=builder /app/gate .
-EXPOSE 80
-CMD ["./gate"]
-
+COPY --from=builder /app/certservice .
+EXPOSE 8080
+CMD ["./certservice"]

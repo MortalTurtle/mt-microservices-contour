@@ -9,5 +9,5 @@ import (
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ping", handlers.PingHandler)
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":80", mux))
 }

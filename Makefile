@@ -1,5 +1,5 @@
 
-.PHONY: docker-run
+.PHONY: run
 run:
 	docker compose build && docker compose up
 
@@ -7,4 +7,8 @@ run:
 clean:
 	docker compose down -v && \
 	docker container prune -f && \
-	docker network prune -f
+	docker network prune -f && \
+	rm -rf certvault/certs && \
+	rm -rf certvault/file && \
+	rm -rf certvault/logs && \
+	rm -rf certvault/data
