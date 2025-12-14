@@ -1,4 +1,3 @@
-log_level = "trace"
 disable_mlock = true
 
 storage "file" {

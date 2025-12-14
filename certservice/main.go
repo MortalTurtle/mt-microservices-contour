@@ -208,7 +208,7 @@ func main() {
 	http.HandleFunc("/self", selfHandler(vm))
 	http.HandleFunc("/ca", getCA())
 
-	listenPort := ":8443"
+	listenPort := ":443"
 
 	certPath := "/etc/vault/certservice.crt"
 	keyPath := "/etc/vault/certservice.key"

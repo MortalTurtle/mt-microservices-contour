@@ -3,7 +3,6 @@ package certclient
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,10 +23,10 @@ type CertificaServiceClient struct {
 	httpClient *http.Client
 }
 
-func NewClient(certServiceURL string, skipVerify bool) *CertificaServiceClient {
+func NewClient(certServiceURL string) *CertificaServiceClient {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: skipVerify,
+			InsecureSkipVerify: true,
 		},
 	}
 
@@ -73,46 +72,22 @@ func (c *CertificaServiceClient) RequestCertificate(cn string, ips, dns []string
 	return &cert, nil
 }
 
-func SaveToFile(cert *Certificate, basePath string) error {
-	dir := "/certs"
+func SaveToFiles(cert *Certificate, baseName string) error {
+	dir := "/certs/"
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create certs directory: %w", err)
 	}
-	certPath := basePath + ".crt"
+	certPath := dir + baseName + ".crt"
 	if err := os.WriteFile(certPath, []byte(cert.Certificate), 0644); err != nil {
 		return fmt.Errorf("failed to save certificate: %w", err)
 	}
-	keyPath := basePath + ".key"
+	keyPath := dir + baseName + ".key"
 	if err := os.WriteFile(keyPath, []byte(cert.PrivateKey), 0600); err != nil {
 		return fmt.Errorf("failed to save private key: %w", err)
 	}
-	caPath := basePath + "-ca.crt"
+	caPath := dir + baseName + "-ca.crt"
 	if err := os.WriteFile(caPath, []byte(cert.IssuingCA), 0644); err != nil {
 		return fmt.Errorf("failed to save CA: %w", err)
 	}
 	return nil
-}
-
-func LoadTLSConfig(certPath, keyPath, caPath string, clientAuth bool) (*tls.Config, error) {
-	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load certificate: %w", err)
-	}
-	caCert, err := os.ReadFile(caPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load CA: %w", err)
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-	config := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		MinVersion:   tls.VersionTLS12,
-	}
-	if clientAuth {
-		config.ClientCAs = caCertPool
-		config.ClientAuth = tls.RequireAndVerifyClientCert
-	} else {
-		config.RootCAs = caCertPool
-	}
-	return config, nil
 }

@@ -13,6 +13,6 @@ RUN apk --no-cache add curl
 WORKDIR /app
 COPY --from=builder /app/certservice/certservice .
 RUN mkdir -p /certs
-EXPOSE 8443 8080
+EXPOSE 443 80
 CMD ["./certservice"]
 
