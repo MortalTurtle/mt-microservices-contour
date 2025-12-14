@@ -6,8 +6,7 @@ vault secrets enable -path=pki_internal pki
 vault secrets tune -max-lease-ttl=87600h pki_internal
 
 vault write pki_internal/config/ca \
-    pem_bundle=@/vault/certs/ca.crt
-
+    pem_bundle="$(cat /vault/certs/ca.key /vault/certs/ca.crt)"
 
 vault write pki_internal/config/urls \
     issuing_certificates="https://certvault.mt.ru:8200/v1/pki_internal/ca" \

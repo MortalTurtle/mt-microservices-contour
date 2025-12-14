@@ -1,8 +1,9 @@
 go 1.25.3
 
 use (
-    ./auth_service/
-    ./gate/
-    ./tvm_server/
-    ./gocommon/
+    ./certservice
+    ./auth_service
+    ./gate
+    ./tvm_server
+    ./gocommon
 )

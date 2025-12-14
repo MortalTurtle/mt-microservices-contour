@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -72,10 +74,10 @@ func (vm *VaultManager) IssueCertificate(req CertRequest) (*CertResponse, error)
 		"ttl":         req.TTL,
 	}
 	if len(req.IPs) > 0 {
-		data["ip_sans"] = req.IPs
+		data["ip_sans"] = strings.Join(req.IPs, ",")
 	}
 	if len(req.DNS) > 0 {
-		data["alt_names"] = req.DNS
+		data["alt_names"] = strings.Join(req.DNS, ",")
 	}
 	secret, err := vm.client.Logical().Write("pki_internal/issue/certservice-role", data)
 	if err != nil {
@@ -95,6 +97,78 @@ func (vm *VaultManager) HealthCheck() bool {
 	return err == nil && !status.Sealed
 }
 
+func (vm *VaultManager) GetSelfCertificate() (*CertResponse, error) {
+	serviceCN := os.Getenv("SERVICE_CN")
+	if serviceCN == "" {
+		return nil, fmt.Errorf("SERVICE_CN env is empty or missing")
+	}
+
+	serviceIP := os.Getenv("SERVICE_IP")
+	if serviceIP == "" {
+		serviceIP = "192.168.1.102"
+	}
+
+	req := CertRequest{
+		CommonName: serviceCN,
+		DNS: []string{
+			serviceCN,
+			"localhost",
+		},
+		IPs: []string{
+			serviceIP,
+			"127.0.0.1",
+			"::1",
+		},
+		TTL: "8760h",
+	}
+
+	return vm.IssueCertificate(req)
+}
+
+func SaveCertificate(certResp *CertResponse, certPath, keyPath, caPath string) error {
+	if err := os.WriteFile(certPath, []byte(certResp.Certificate), 0644); err != nil {
+		return fmt.Errorf("failed to save certificate: %w", err)
+	}
+
+	if err := os.WriteFile(keyPath, []byte(certResp.PrivateKey), 0600); err != nil {
+		return fmt.Errorf("failed to save private key: %w", err)
+	}
+
+	if err := os.WriteFile(caPath, []byte(certResp.IssuingCA), 0644); err != nil {
+		return fmt.Errorf("failed to save CA: %w", err)
+	}
+
+	log.Printf("Certificate saved to: %s", certPath)
+	log.Printf("Private key saved to: %s", keyPath)
+	log.Printf("CA saved to: %s", caPath)
+
+	return nil
+}
+
+func LoadTLSConfig(certPath, keyPath, caPath string) (*tls.Config, error) {
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load certificate: %w", err)
+	}
+
+	var caCertPool *x509.CertPool
+	if caPath != "" {
+		caCert, err := os.ReadFile(caPath)
+		if err == nil {
+			caCertPool = x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+		}
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientCAs:    caCertPool,
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	return tlsConfig, nil
+}
+
 func main() {
 	for i := range 60 {
 		if _, err := os.Stat("/run/secrets/role_id"); err == nil {
@@ -104,6 +178,7 @@ func main() {
 		log.Printf("Waiting for secrets... (%d/60)", i+1)
 		time.Sleep(2 * time.Second)
 	}
+
 	vm, err := NewVaultManager()
 	if err != nil {
 		log.Fatalf("Failed to initialize Vault: %v", err)
@@ -111,11 +186,46 @@ func main() {
 	if !vm.HealthCheck() {
 		log.Fatal("Vault health check failed")
 	}
-	log.Println("✓ Connected to Vault")
+	log.Println("Connected to Vault")
+
+	certResp, err := vm.GetSelfCertificate()
+	if err != nil {
+		log.Fatalf("Warning: Failed to get self certificate: %v", err)
+	} else {
+		certPath := "/etc/vault/certservice.crt"
+		keyPath := "/etc/vault/certservice.key"
+		caPath := "/etc/vault/ca.crt"
+
+		if err := SaveCertificate(certResp, certPath, keyPath, caPath); err != nil {
+			log.Fatalf("Warning: Failed to save self certificate: %v", err)
+		} else {
+			log.Println("✓ Self certificate obtained and saved")
+		}
+	}
+
 	http.HandleFunc("/issue", issueHandler(vm))
 	http.HandleFunc("/health", healthHandler(vm))
-	log.Println("Starting certservice on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	http.HandleFunc("/self", selfHandler(vm))
+	http.HandleFunc("/ca", getCA())
+
+	listenPort := ":8443"
+
+	certPath := "/etc/vault/certservice.crt"
+	keyPath := "/etc/vault/certservice.key"
+	caPath := "/etc/vault/ca.crt"
+
+	tlsConfig, err := LoadTLSConfig(certPath, keyPath, caPath)
+	if err != nil {
+		log.Fatalf("Cannot load TLS config: %v", err)
+	}
+
+	server := &http.Server{
+		Addr:      listenPort,
+		TLSConfig: tlsConfig,
+	}
+
+	log.Printf("Starting certservice on %s (TLS enabled)", listenPort)
+	if err := server.ListenAndServeTLS(certPath, keyPath); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -158,5 +268,35 @@ func healthHandler(vm *VaultManager) http.HandlerFunc {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte(`{"status": "unavailable"}`))
 		}
+	}
+}
+
+func selfHandler(vm *VaultManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		cert, err := vm.GetSelfCertificate()
+		if err != nil {
+			log.Printf("Error getting self certificate: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(cert)
+	}
+}
+
+func getCA() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		caPath := "/etc/vault/ca.crt"
+		caCert, err := os.ReadFile(caPath)
+		if err != nil {
+			http.Error(w, "CA not available", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/x-pem-file")
+		w.Write(caCert)
 	}
 }

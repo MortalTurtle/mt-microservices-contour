@@ -1,10 +1,10 @@
-module certservice
+module github.com/mt-microservices-contour/certservice
 
 go 1.25.3
 
 require (
 	github.com/hashicorp/vault/api v1.20.0
-	github.com/hashicorp/vault/api/auth/approle v0.11.0
+	github.com/mt-microservices-contour/gocommon v0.0.0
 )
 
 require (
