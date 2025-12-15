@@ -4,6 +4,6 @@ use (
     ./certservice
     ./auth_service
     ./gate
-    ./tvm_server
+    ./tokenservice
     ./gocommon
 )

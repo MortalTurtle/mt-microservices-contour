@@ -94,39 +94,25 @@ services:
       retries: 3
       start_period: 30s
 
-  tvm:
-    container_name: tvm
-    build: ./tvm_server
+  tokenservice:
+    container_name: tokenservice
+    build:
+       context: .
+       dockerfile: tokenservice/Dockerfile
     environment:
-      - SERVICE_NAME=tvm
+      - SERVICE_CN=tokenservice.mt.ru
       - SERVICE_IP=192.168.1.12
+      - CERTSERVICE_URL=https://certservice.mt.ru
     networks:
       internal_net:
         ipv4_address: 192.168.1.12
     dns: 192.168.1.200
-  tickets-storage:
-    container_name: tickets-storage
-    image: postgres:14.7-alpine
-    environment:
-      POSTGRES_DB: tickets_storage_db_1
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: 123456789
-    expose:
-      - 5432
-    volumes:
-          - ./tvm_server/postgresql/schemas:/docker-entrypoint-initdb.d
-    restart: unless-stopped
-    networks:
-      - internal_net
   gate:
     container_name: gate
     build:
        context: .
        dockerfile: gate/Dockerfile
     environment:
-      - SERVICE_NAME=tvm
-      - EXTERNAL_SERVICE_IP=172.20.0.3
-      - INTERNAL_SERVICE_IP=192.168.1.13
       - SERVICE_CN=gate.mt.ru
       - SERVICE_IP=192.168.1.102
       - CERTSERVICE_URL=https://certservice.mt.ru
