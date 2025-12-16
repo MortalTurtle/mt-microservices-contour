@@ -13,7 +13,3 @@ listener "tcp" {
 }
 
 api_addr = "https://certvault.mt.ru:8200"
-
-audit "file" {
-  path = "/vault/logs/audit.log"
-}

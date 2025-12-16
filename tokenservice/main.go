@@ -160,75 +160,6 @@ func (ts *TokenService) issueTokenHandler(w http.ResponseWriter, r *http.Request
 	log.Printf("Issued token for service: %s", req.ServiceName)
 }
 
-func (ts *TokenService) validateTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var req jwtCommon.ValidationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid request format"}`, http.StatusBadRequest)
-		return
-	}
-
-	if req.Token == "" {
-		json.NewEncoder(w).Encode(jwtCommon.ValidationResponse{
-			Valid: false,
-			Error: "Token is required",
-		})
-		return
-	}
-
-	currentKey := ts.keyStore.GetCurrentKey()
-	if currentKey == nil {
-		json.NewEncoder(w).Encode(jwtCommon.ValidationResponse{
-			Valid: false,
-			Error: "No signing key available",
-		})
-		return
-	}
-
-	validatedToken, err := jwt.ParseWithClaims(req.Token, &jwtCommon.ServiceTokenClaims{}, func(token *jwt.Token) (any, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		if kid, ok := token.Header["kid"].(string); ok && kid != currentKey.KeyID {
-			return nil, fmt.Errorf("token signed with old key: %s", kid)
-		}
-
-		return &currentKey.PrivateKey.PublicKey, nil
-	})
-	if err != nil {
-		json.NewEncoder(w).Encode(jwtCommon.ValidationResponse{
-			Valid: false,
-			Error: err.Error(),
-		})
-		return
-	}
-
-	if !validatedToken.Valid {
-		json.NewEncoder(w).Encode(jwtCommon.ValidationResponse{
-			Valid: false,
-			Error: "Token is invalid",
-		})
-		return
-	}
-
-	claims, ok := validatedToken.Claims.(*jwtCommon.ServiceTokenClaims)
-	if !ok {
-		json.NewEncoder(w).Encode(jwtCommon.ValidationResponse{
-			Valid: false,
-			Error: "Invalid token claims",
-		})
-		return
-	}
-
-	response := jwtCommon.ValidationResponse{
-		Valid:  true,
-		Claims: claims,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
 func (ts *TokenService) jwksHandler(w http.ResponseWriter, r *http.Request) {
 	currentKey := ts.keyStore.GetCurrentKey()
 	if currentKey == nil {
@@ -295,10 +226,8 @@ func (ts *TokenService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ts.healthHandler(w, r)
 	case path == "/.well-known/jwks.json" && method == "GET":
 		ts.jwksHandler(w, r)
-	case path == "/api/v1/token/issue" && method == "POST":
+	case path == "/token/issue" && method == "POST":
 		ts.issueTokenHandler(w, r)
-	case path == "/api/v1/token/validate" && method == "POST":
-		ts.validateTokenHandler(w, r)
 	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 	}

@@ -95,7 +95,7 @@ func (v *Client) GetServiceToken(ctx context.Context) (string, error) {
 	}
 	body, _ := json.Marshal(reqBody)
 	req, err := http.NewRequestWithContext(ctx, "POST",
-		fmt.Sprintf("%s/api/v1/token/issue", v.config.TokenServiceURL),
+		fmt.Sprintf("%s/token/issue", v.config.TokenServiceURL),
 		strings.NewReader(string(body)))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
