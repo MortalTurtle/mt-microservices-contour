@@ -2,8 +2,8 @@ go 1.25.3
 
 use (
     ./certservice
-    ./auth_service
-    ./gate
+    ./service1
+    ./service2
     ./tokenservice
     ./gocommon
 )

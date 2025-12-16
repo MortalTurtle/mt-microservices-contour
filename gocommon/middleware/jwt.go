@@ -1,7 +1,8 @@
-package tokenauth
+package middleware
 
 import (
 	"context"
+	"fmt"
 	"gocommon/jwt"
 	"net/http"
 )
@@ -12,20 +13,24 @@ const (
 	ClaimsContextKey contextKey = "service_claims"
 )
 
-type Middleware struct {
-	validator *jwt.Validator
+type JWTMiddleware struct {
+	jwtClient *jwt.Client
 }
 
-func NewMiddleware(cfg jwt.TokenAuthConfig) *Middleware {
-	return &Middleware{
-		jwt.NewValidator(&cfg),
+func NewJWTMiddleware(cfg jwt.ClientConfig) (*JWTMiddleware, error) {
+	client, err := jwt.NewClient(&cfg)
+	if err != nil {
+		return nil, fmt.Errorf("Error while creating jwt client: %w", err)
 	}
+
+	return &JWTMiddleware{
+		client,
+	}, nil
 }
 
-// Handler возвращает http.Handler с проверкой JWT
-func (m *Middleware) Handler(next http.Handler) http.Handler {
+func (m *JWTMiddleware) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims, err := m.validator.ValidateRequest(r)
+		claims, err := m.jwtClient.ValidateRequest(r)
 		if err != nil {
 			http.Error(w,
 				`{"error": "Unauthorized", "message": "`+err.Error()+`"}`,

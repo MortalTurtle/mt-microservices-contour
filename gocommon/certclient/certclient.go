@@ -11,32 +11,63 @@ import (
 	"time"
 )
 
-type Certificate struct {
+type certificate struct {
 	Certificate string `json:"certificate"`
 	PrivateKey  string `json:"private_key"`
 	IssuingCA   string `json:"issuing_ca"`
 	Serial      string `json:"serial"`
 }
 
-type CertificaServiceClient struct {
+type certificaServiceClient struct {
 	baseURL    string
 	httpClient *http.Client
 }
 
-func NewClient(certServiceURL string) *CertificaServiceClient {
+func RecieveCertificates(certServiceURL, serviceCN, serviceIP string) error {
+	client := newClient(certServiceURL)
+
+	caData, err := client.GetCA()
+	if err != nil {
+		return fmt.Errorf("Warning: Failed to get CA: %v", err)
+	} else {
+		if err := os.WriteFile("/certs/ca.crt", caData, 0644); err != nil {
+			return fmt.Errorf("Warning: Failed to save CA: %v", err)
+		}
+	}
+
+	cert, err := client.RequestCertificate(
+		serviceCN,
+		[]string{serviceIP, "127.0.0.1", "::1"},
+		[]string{
+			serviceCN,
+			"localhost",
+		},
+		"720h",
+	)
+	if err != nil {
+		return fmt.Errorf("Failed to request certificate: %v", err)
+	}
+
+	if err := saveToFiles(cert, serviceCN); err != nil {
+		return fmt.Errorf("Failed to save certificate: %v", err)
+	}
+	return nil
+}
+
+func newClient(certServiceURL string) *certificaServiceClient {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
 	}
 
-	return &CertificaServiceClient{
+	return &certificaServiceClient{
 		baseURL:    certServiceURL,
 		httpClient: &http.Client{Transport: transport, Timeout: 30 * time.Second},
 	}
 }
 
-func (c *CertificaServiceClient) GetCA() ([]byte, error) {
+func (c *certificaServiceClient) GetCA() ([]byte, error) {
 	resp, err := c.httpClient.Get(c.baseURL + "/ca")
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch CA: %w", err)
@@ -48,7 +79,7 @@ func (c *CertificaServiceClient) GetCA() ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func (c *CertificaServiceClient) RequestCertificate(cn string, ips, dns []string, ttl string) (*Certificate, error) {
+func (c *certificaServiceClient) RequestCertificate(cn string, ips, dns []string, ttl string) (*certificate, error) {
 	reqData := map[string]any{
 		"common_name": cn,
 		"ips":         ips,
@@ -65,14 +96,14 @@ func (c *CertificaServiceClient) RequestCertificate(cn string, ips, dns []string
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("failed to request certificate, status: %d, body: %s", resp.StatusCode, body)
 	}
-	var cert Certificate
+	var cert certificate
 	if err := json.NewDecoder(resp.Body).Decode(&cert); err != nil {
 		return nil, fmt.Errorf("failed to decode certificate: %w", err)
 	}
 	return &cert, nil
 }
 
-func SaveToFiles(cert *Certificate, baseName string) error {
+func saveToFiles(cert *certificate, baseName string) error {
 	dir := "/certs/"
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create certs directory: %w", err)

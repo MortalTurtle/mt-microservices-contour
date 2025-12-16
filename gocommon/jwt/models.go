@@ -5,10 +5,16 @@ import (
 	"time"
 )
 
+type IssueTokenRequest struct {
+	ServiceName string   `json:"service_name"`
+	ServiceIP   string   `json:"service_ip,omitempty"`
+	Audience    []string `json:"audience,omitempty"`
+	TTLSeconds  int      `json:"ttl_seconds,omitempty"`
+}
+
 type ServiceTokenClaims struct {
 	ServiceName string `json:"service_name"`
 	ServiceIP   string `json:"service_ip"`
-	Certificate string `json:"certificate"` // Хеш сертификата
 	// Standart claims
 	Issuer    string   `json:"iss"`
 	Subject   string   `json:"sub"`
@@ -65,11 +71,15 @@ type TokenResponse struct {
 	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
-type PublicKeyResponse struct {
-	KeyID     string `json:"kid"`
-	PublicKey string `json:"public_key"`
-	Algorithm string `json:"alg"`
-	ExpiresAt int64  `json:"exp"`
+type KeyResponse struct {
+	KeyID     string `json:"KeyID"`
+	PublicKey string `json:"PublicKey"`
+	Algorithm string `json:"Algorithm"`
+	ExpiresAt int64  `json:"ExpiresAt"`
+}
+
+type JWKSResponse struct {
+	Keys []KeyResponse `json:"keys"`
 }
 
 type ValidationRequest struct {
@@ -80,13 +90,4 @@ type ValidationResponse struct {
 	Valid  bool                `json:"valid"`
 	Claims *ServiceTokenClaims `json:"claims,omitempty"`
 	Error  string              `json:"error,omitempty"`
-}
-
-type TokenAuthConfig struct {
-	TokenServiceURL string
-	ServiceName     string
-	ServiceIP       string
-	PublicKeyTTL    time.Duration
-	AllowedServices []string
-	AllowedIssuer   string
 }
