@@ -5,10 +5,9 @@ A demonstration project showcasing a **fully enclosed inner microservices contou
 ##  Key security measures
 
 - **Complete Network Isolation**: Internal services communicate within a private, enclosed network
-- **Dual-Layer Authentication**:
-  - Ticket-based authentication for external clients (formed with encoding login and password in base64)
-  - Service-to-service centralized authorization with JWT tokens
-  - **DNS Segmentation**: Separate internal and external DNS servers for access control
+- **Service-to-service centralized authorization**: Using JWT tokens
+- **Service-to-service authentication**: Using X509 certificates
+- **DNS Segmentation**: Separate internal and external DNS servers for access control
 
 ##  Architecture Overview
 
