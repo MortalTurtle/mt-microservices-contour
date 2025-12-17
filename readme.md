@@ -7,7 +7,7 @@ A demonstration project showcasing a **fully enclosed inner microservices contou
 - **Complete Network Isolation**: Internal services communicate within a private, enclosed network
 - **Service-to-service centralized authorization**: Using JWT tokens
 - **Service-to-service authentication**: Using X509 certificates
-- **DNS Segmentation**: Separate internal and external DNS servers for access control
+- **DNS Segmentation**: Separate internal DNS server for access control
 
 ##  Architecture Overview
 
